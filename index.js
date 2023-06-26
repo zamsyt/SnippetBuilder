@@ -1,76 +1,93 @@
-//console.log(window.location.pathname)
-
 async function getFile(url) {
     let response = await fetch(url);
     //let file = await response.blob()
-    let fileText = await response.text();
-    return fileText;
+    return await response.text();
 }
+
+function addElement(parent, type, attributes = {}, text) {
+    let el = document.createElement(type);
+    for (const [key, value] of Object.entries(attributes)) {
+        el.setAttribute(key, value);
+    }
+    el.textContent = text;
+    parent.appendChild(el);
+    return el;
+}
+
+const $ = (s) => document.querySelector(s);
 
 function addCheckbox(id, label) {
-    let liEl = document.createElement("li");
-
-    let inputEl = document.createElement("input");
-    inputEl.setAttribute("type", "checkbox");
-    inputEl.setAttribute("id", id);
-    inputEl.setAttribute("checked", true);
-
-    let labelEl = document.createElement("label");
-    labelEl.setAttribute("for", id);
-    labelEl.appendChild(document.createTextNode(label));
-
-    liEl.appendChild(inputEl);
-    liEl.append(labelEl);
-
-    document.querySelector("ul").appendChild(liEl);
+    let liEl = addElement($("ul"), "li");
+    addElement(liEl, "input", {"type": "checkbox", "id": id, "checked": true})
+    addElement(liEl, "label", {"for": id}, label)
 }
 
-let sections = [];
 const parseHeading = (match) => ({title: match[1], index: match.index});
 
-(async () => {
-    //const file = await getFile("https://raw.githubusercontent.com/zamsyt/obsidian-snippets/main/Easy%20multi-column%20notes.css");
-    const file = myCss;
+const rootPath = "/snippetbuilder/";
+const url = window.location.pathname.slice(rootPath.length);
 
-    const filename = decodeURIComponent(window.location.pathname.split("/").slice(-1));
-    document.querySelector("h1").textContent = filename;
+//console.log(url);
 
-    const headingRe = /^[ \t]*\/\* *#+ +(.*?)(?: +#+)? *\*\/[ \t]*$/gm;
-    let headings = file.matchAll(headingRe);
+let file;
+const filename = decodeURIComponent(window.location.pathname.split("/").slice(-1));
+const fileExt = filename.split(".").pop();
+$("h1").textContent = filename;
 
+const headingRe = /^[ \t]*\/\* *#+ +(.*?)(?: +#+)? *\*\/[ \t]*$/gm;
+const commentRe = /^[ \t]*\/\* *(.*) *\*\/[ \t]*$/gm;
+
+let sections = [];
+
+function parseHeadings(headings) {
     let i = 0;
-    let iter = headings.next();
-    const commentRe = /^[ \t]*\/\* *(.*) *\*\/[ \t]*$/gm;
-    if (!iter.done) {
-        let h = parseHeading(iter.value);
-        //if (h.index > 0) { sections.push({title: "", index: 0}) }
-        sections.push(h);
-        if (h.title != "") {
-            addCheckbox("checkbox-" + i, h.title);
-            i++;
-        }
-    } else {
-        document.getElementById("log").textContent += "No headings found. Listing all single line comments.\n"
-        headings = file.matchAll(commentRe);
-    }
     for (let heading of headings) {
         let h = parseHeading(heading);
         sections.push(h);
-        if (h.title == "") continue;
-        addCheckbox("checkbox-" + i, h.title);
+        if (h.title != "") {
+            addCheckbox(`section-${i}`, h.title);
+        }
         i++;
     }
-})();
+}
 
-function saveSnippet() {
+getFile(url).then((responseText) => {
+    file = responseText;
+    //file = myCss;
+    parseHeadings(file.matchAll(headingRe));
+    if (sections.length == 0) {
+        $("#log").textContent += "No headings found. Listing all single line comments instead.\n";
+        parseHeadings(file.matchAll(commentRe))
+    }
+});
+
+function save(content, filename) {
     const a = document.createElement("a");
-    const file = new Blob(["test content"], {type: "text/css"});
+    const file = new Blob([content], {type: fileExt == "css" ? "text/css" : "text/plain"});
 
-    a.href= URL.createObjectURL(file);
-    a.download = "myFile.css";
+    a.href = URL.createObjectURL(file);
+    a.download = filename;
     a.click();
     
     URL.revokeObjectURL(a.href);
-};
+}
 
-document.getElementById("btn-save").addEventListener('click', saveSnippet);
+function compile() {
+    if (sections.length == 0) { return file; }
+
+    let output = "";
+    output += file.slice(0, sections[0].index)
+    for (let i = 0; i < sections.length-1; i++) {
+        if (sections[i].title != "" && !$(`#section-${i}`).checked) continue;
+        output += file.slice(sections[i].index, sections[i+1].index);
+    }
+    let last = sections.length-1
+    if (sections[last].title == "" || $(`#section-${last}`).checked) {
+        output += file.slice(sections[last].index);
+    }
+    return output
+}
+
+document.getElementById("btn-save").addEventListener("click", () => {
+    save(compile(), filename);
+});

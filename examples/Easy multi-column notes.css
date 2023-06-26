@@ -1,5 +1,4 @@
-const myCss = `
-/* Multicolumn Notes v0.5.4
+/* Multicolumn Notes v0.5.4-sb-testing
    github.com/zamsyt */
 .markdown-preview-view div:has(> hr) + * > hr,
 .markdown-source-view :is(.HyperMD-hr:not(.HyperMD-quote), .hr) + :is(.HyperMD-hr, .hr) + *,
@@ -89,4 +88,3 @@ hr:has(+ hr), hr + hr {
   float: none;
   left: -1em;
   margin-left: 0; }
-`
