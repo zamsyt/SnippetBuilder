@@ -29,14 +29,6 @@ const url = window.location.pathname.slice(rootPath.length);
 
 //console.log(url);
 
-let file;
-const filename = decodeURIComponent(window.location.pathname.split("/").slice(-1));
-const fileExt = filename.split(".").pop();
-$("h1").textContent = filename;
-
-const headingRe = /^[ \t]*\/\* *#+ +(.*?)(?: +#+)? *\*\/[ \t]*$/gm;
-const commentRe = /^[ \t]*\/\* *(.*) *\*\/[ \t]*$/gm;
-
 let sections = [];
 
 function parseHeadings(headings) {
@@ -51,15 +43,40 @@ function parseHeadings(headings) {
     }
 }
 
-getFile(url).then((responseText) => {
-    file = responseText;
-    //file = myCss;
+let file = "";
+let filename = "my-snippet.css";
+let fileExt = "css";
+
+const headingRe = /^[ \t]*\/\* *#+ +(.*?)(?: +#+)? *\*\/[ \t]*$/gm;
+const commentRe = /^[ \t]*\/\* *(.*) *\*\/[ \t]*$/gm;
+
+const textarea = $("textarea")
+function parseTextarea() {
+    file = textarea.value;
+    sections = [];
+    $("ul").innerHTML = "";
     parseHeadings(file.matchAll(headingRe));
-    if (sections.length == 0) {
-        $("#log").textContent += "No headings found. Listing all single line comments instead.\n";
-        parseHeadings(file.matchAll(commentRe))
-    }
-});
+}
+
+if (url == "") {
+    $("div").style.display = "block";
+    parseTextarea();
+    textarea.addEventListener("change", parseTextarea);
+} else {
+    filename = decodeURIComponent(url.split("/").slice(-1));
+    fileExt = filename.split(".").pop();
+    $("h2").textContent = filename;
+
+    getFile(url).then((responseText) => {
+        file = responseText;
+        //file = myCss;
+        parseHeadings(file.matchAll(headingRe));
+        if (sections.length == 0) {
+            $("#log").textContent += "No headings found. Listing all single line comments instead.\n";
+            parseHeadings(file.matchAll(commentRe))
+        }
+    });
+}
 
 function save(content, filename) {
     const a = document.createElement("a");
@@ -88,6 +105,6 @@ function compile() {
     return output
 }
 
-document.getElementById("btn-save").addEventListener("click", () => {
+$("#btn-save").addEventListener("click", () => {
     save(compile(), filename);
 });
