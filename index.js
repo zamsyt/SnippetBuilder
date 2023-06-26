@@ -25,16 +25,39 @@ function addCheckbox(id, label) {
     document.querySelector("ul").appendChild(liEl);
 }
 
-(async () => {
-    const file = await getFile("https://raw.githubusercontent.com/zamsyt/obsidian-snippets/main/Easy%20multi-column%20notes.css");
+let sections = [];
+const parseHeading = (match) => ({title: match[1], index: match.index});
 
-    const re = /\s*\/\* (.*?) \*\/\s*/g;
-    const comments = file.matchAll(re);
+(async () => {
+    //const file = await getFile("https://raw.githubusercontent.com/zamsyt/obsidian-snippets/main/Easy%20multi-column%20notes.css");
+    const file = myCss;
+
+    const filename = decodeURIComponent(window.location.pathname.split("/").slice(-1));
+    document.querySelector("h1").textContent = filename;
+
+    const headingRe = /^[ \t]*\/\* *#+ +(.*?)(?: +#+)? *\*\/[ \t]*$/gm;
+    let headings = file.matchAll(headingRe);
 
     let i = 0;
-    for (let comment of comments) {
-        console.log(comment);
-        addCheckbox("checkbox-" + i, comment[1])
+    let iter = headings.next();
+    const commentRe = /^[ \t]*\/\* *(.*) *\*\/[ \t]*$/gm;
+    if (!iter.done) {
+        let h = parseHeading(iter.value);
+        //if (h.index > 0) { sections.push({title: "", index: 0}) }
+        sections.push(h);
+        if (h.title != "") {
+            addCheckbox("checkbox-" + i, h.title);
+            i++;
+        }
+    } else {
+        document.getElementById("log").textContent += "No headings found. Listing all single line comments.\n"
+        headings = file.matchAll(commentRe);
+    }
+    for (let heading of headings) {
+        let h = parseHeading(heading);
+        sections.push(h);
+        if (h.title == "") continue;
+        addCheckbox("checkbox-" + i, h.title);
         i++;
     }
 })();
