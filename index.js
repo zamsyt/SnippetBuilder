@@ -25,7 +25,10 @@ function addCheckbox(id, label) {
 const parseHeading = (match) => ({title: match[1], index: match.index});
 
 const rootPath = "/snippetbuilder/";
-const url = window.location.pathname.slice(rootPath.length);
+let url = window.location.pathname.slice(rootPath.length);
+if (url != "" && !(url.startsWith("https://") || url.startsWith("http://"))) {
+    url = "https://" + url;
+}
 
 //console.log(url);
 
